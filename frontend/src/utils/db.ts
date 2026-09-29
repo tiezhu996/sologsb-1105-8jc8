@@ -79,7 +79,27 @@ const sheets: Sheet[] = [
   },
 ]
 
-const scans: ScanItem[] = [
+/**
+ * 种子扫描件在录入时尚无版本谱系字段，由 hydrateSeedScans 按
+ * “同图幅 + 同文件名”归组并按录入时间排序后补齐 lineageId/version/status。
+ */
+type SeedScan = Omit<ScanItem, 'lineageId' | 'version' | 'versionStatus'>
+
+const scans: SeedScan[] = [
+  {
+    id: 'scan-bp-jia-3-1-v1',
+    sheetId: 'sheet-bp-jia-3',
+    fileName: '北平甲3_原图_600dpi.tif',
+    resolutionDpi: 600,
+    colorMode: '彩色',
+    pieces: 6,
+    quality: '偏淡',
+    storageNote: '市档案馆 D-17-04 铁柜（初扫卷）',
+    importedAt: '2025-01-06T10:00:00.000Z',
+    isPrimary: false,
+    replacedAt: '2025-02-18T09:30:00.000Z',
+    replaceReason: '初扫件边缘裁切不全，据档案馆原卷重新扫描替换。',
+  },
   {
     id: 'scan-bp-jia-3-1',
     sheetId: 'sheet-bp-jia-3',
@@ -376,6 +396,37 @@ const histories: NameHistory[] = [
   { id: 'hist-24', placePairId: 'place-kf-chengxi-1-2', period: '北宋天圣年间', name: '州桥', changeType: '改名', sourceRef: '《东京梦华录》卷二', note: '御街跨桥通称州桥，天汉桥为正式桥名。' },
 ]
 
+/**
+ * 为种子扫描件补齐版本谱系字段：按“图幅 + 文件名”归组，
+ * 录入时间最晚的为当前版本，其余留档。谱系号取组内首件 id。
+ */
+function hydrateSeedScans(seedScans: SeedScan[]): ScanItem[] {
+  const groups = new Map<string, SeedScan[]>()
+  for (const scan of seedScans) {
+    const key = `${scan.sheetId} ${scan.fileName}`
+    const group = groups.get(key)
+    if (group) {
+      group.push(scan)
+    } else {
+      groups.set(key, [scan])
+    }
+  }
+
+  const hydrated: ScanItem[] = []
+  for (const group of groups.values()) {
+    const ordered = [...group].sort((left, right) => left.importedAt.localeCompare(right.importedAt))
+    ordered.forEach((scan, index) => {
+      hydrated.push({
+        ...scan,
+        lineageId: ordered[0].id,
+        version: index + 1,
+        versionStatus: index === ordered.length - 1 ? 'current' : 'archived',
+      })
+    })
+  }
+  return hydrated
+}
+
 class GboldmapDatabase extends Dexie {
   sheets!: Table<Sheet, string>
   scans!: Table<ScanItem, string>
@@ -408,9 +459,28 @@ class GboldmapDatabase extends Dexie {
           })
       })
 
+    // version(3)：扫描件引入版本谱系。既有扫描件各自成为独立谱系的当前版本。
+    this.version(3)
+      .stores({
+        sheets: 'id, code, year, scale, status, series',
+        scans: 'id, sheetId, importedAt, quality',
+        placePairs: 'id, sheetId, oldName, newName, placeType, certainty',
+        histories: 'id, placePairId, period, changeType',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<ScanItem, string>('scans')
+          .toCollection()
+          .modify((scan: ScanItem) => {
+            scan.lineageId = scan.id
+            scan.version = 1
+            scan.versionStatus = 'current'
+          })
+      })
+
     this.on('populate', async () => {
       await this.sheets.bulkAdd(sheets)
-      await this.scans.bulkAdd(scans)
+      await this.scans.bulkAdd(hydrateSeedScans(scans))
       await this.placePairs.bulkAdd(placePairs)
       await this.histories.bulkAdd(histories)
     })

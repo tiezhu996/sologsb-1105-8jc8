@@ -597,11 +597,25 @@ textarea.native-field {
   border-radius: 7px;
 }
 
+.scan-card--archived {
+  background: #f3ede3;
+  border-color: #d3c6b4;
+  border-left-color: #b0a290;
+  opacity: 0.92;
+}
+
 .scan-card__topline {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.scan-card__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .scan-card__file {
@@ -637,6 +651,48 @@ textarea.native-field {
   margin-bottom: 5px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.scan-card__replaced {
+  margin-bottom: 0;
+  padding: 7px 10px;
+  color: #7a6856;
+  background: #eae1d3;
+  border-left: 3px solid #b0967c;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.replace-confirm {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f7ecd9;
+  border: 1px dashed #bd8e67;
+  border-radius: 7px;
+}
+
+.replace-confirm__head {
+  margin-bottom: 12px;
+  color: #6d4d36;
+  line-height: 1.8;
+}
+
+.replace-confirm__secondary {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.scan-lineage {
+  margin: -4px 0 4px 18px;
+  padding-left: 14px;
+  border-left: 2px dashed #c9b79f;
+}
+
+.scan-lineage__archive {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .place-list {

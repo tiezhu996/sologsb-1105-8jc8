@@ -198,7 +198,7 @@ onMounted(() => {
         <div class="sheet-card__meta">
           <div><span>投影</span><br /><strong>{{ sheet.projection }}</strong></div>
           <div><span>图幅尺寸</span><br /><strong>{{ sheet.sheetSizeCm }}</strong></div>
-          <div><span>对照片目</span><br /><strong>{{ sheetStore.getScansForSheet(sheet.id).length }} 件</strong></div>
+          <div><span>对照片目</span><br /><strong>{{ sheetStore.getCurrentScansForSheet(sheet.id).length }} 件</strong></div>
           <div><span>比例尺说明</span><br /><strong>{{ scaleToText(sheet.scale) }}</strong></div>
         </div>
 
