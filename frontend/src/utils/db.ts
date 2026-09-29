@@ -4,6 +4,9 @@ import type { PlacePair } from '../types/placePair'
 import type { ScanItem } from '../types/scan'
 import type { Sheet } from '../types/sheet'
 
+/** 种子扫描件：谱系字段由下方映射统一补齐，但保留固定 id */
+type ScanSeed = Omit<ScanItem, 'lineageId' | 'versionNo' | 'isCurrent' | 'replacedAt' | 'replaceReason'>
+
 const sheets: Sheet[] = [
   {
     id: 'sheet-bp-jia-3',
@@ -79,7 +82,7 @@ const sheets: Sheet[] = [
   },
 ]
 
-const scans: ScanItem[] = [
+const scanDrafts: ScanSeed[] = [
   {
     id: 'scan-bp-jia-3-1',
     sheetId: 'sheet-bp-jia-3',
@@ -225,6 +228,14 @@ const scans: ScanItem[] = [
     isPrimary: false,
   },
 ]
+
+// 种子数据中的每件扫描件各自作为独立谱系的首版
+const scans: ScanItem[] = scanDrafts.map((draft) => ({
+  ...draft,
+  lineageId: `lineage-${draft.id}`,
+  versionNo: 1,
+  isCurrent: true,
+}))
 
 const placePairs: PlacePair[] = [
   {
@@ -405,6 +416,26 @@ class GboldmapDatabase extends Dexie {
           .toCollection()
           .modify((sheet: Sheet & { schemaRev?: number }) => {
             sheet.schemaRev = 2
+          })
+      })
+
+    // 扫描件版本谱系：同一文件名的替换件归入同一 lineageId，
+    // 旧版本 isCurrent=false 留档，并记录替换日期与原因。
+    this.version(3)
+      .stores({
+        sheets: 'id, code, year, scale, status, series',
+        scans: 'id, sheetId, importedAt, quality, lineageId, isCurrent',
+        placePairs: 'id, sheetId, oldName, newName, placeType, certainty',
+        histories: 'id, placePairId, period, changeType',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<ScanItem, string>('scans')
+          .toCollection()
+          .modify((scan: ScanItem) => {
+            scan.lineageId = scan.lineageId ?? `lineage-${scan.id}`
+            scan.versionNo = scan.versionNo ?? 1
+            scan.isCurrent = scan.isCurrent ?? true
           })
       })
 
